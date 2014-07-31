@@ -138,7 +138,7 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
         + x[j+2][i][0] * (  -0.150000000000)
         + x[j+3][i][0] * (   0.016666666667);
 
-      double const grad_sq = grad_x * grad_x  + grad_y * grad_y;
+      double const grad_sq = grad_x * grad_x + grad_y * grad_y;
 
       f[j][i][0] = x[j][i][0] - ctx->dt * ( 0.5 * h2inv * grad_sq + h2inv * lap + h4inv * hyplap );
     }
@@ -182,12 +182,12 @@ PetscErrorCode KSTestEvaluate(KSCtx *ctx)
     double const y = h * j;
     for (i=xs; i<xs+xm; i++) {
       double const x = h * i;
-      u[j][i][0] = sin(2*M_PI*x);
-      f[j][i][0] = sin(2*M_PI*x) - ctx->dt *
+      u[j][i][0] = sin(2*M_PI*y);
+      f[j][i][0] = sin(2*M_PI*y) - ctx->dt *
         (
-         0.5 * (2*M_PI)*(2*M_PI)*cos(2*M_PI*x)*cos(2*M_PI*x)
-         - (2*M_PI)*(2*M_PI)*sin(2*M_PI*x)
-         + (2*M_PI)*(2*M_PI)*(2*M_PI)*(2*M_PI)*sin(2*M_PI*x)
+         0.5 * (2*M_PI)*(2*M_PI)*cos(2*M_PI*y)*cos(2*M_PI*y)
+         - (2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
+         + (2*M_PI)*(2*M_PI)*(2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
           );
     }
   }
@@ -473,18 +473,11 @@ PetscErrorCode KSBESolve(Vec x, double dt, Vec xdot, Vec rhs, KSCtx* ctx)
   SNESConvergedReason reason;
 
   PetscFunctionBeginUser;
-  // call non-linear solver
   ctx->dt = dt;
   ierr = SNESSolve(ctx->snes, rhs, x);CHKERRQ(ierr);
-
   SNESGetIterationNumber(ctx->snes,&its);
   SNESGetConvergedReason(ctx->snes, &reason);
-
   PetscPrintf(PETSC_COMM_WORLD,"Number of SNES iterations = %D, %s\n",its,SNESConvergedReasons[reason]);
-
-  // XXX: chk error
-
-  // compute xdot from rhs and x
   PetscFunctionReturn(0);
 }
 
@@ -539,19 +532,12 @@ PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
   ierr = VecDuplicate(ctx->r, &Udot);
   ierr = VecDuplicate(ctx->r, &RHS);
 
-  // need to put something more interesting here...
-  ierr = DMDAGetInfo(ctx->da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0);
-  assert(Mx == My);
-
-  double const h = 1.0 / (double)(Mx);
-
-  /* get arrays */
+  ierr = DMDAGetInfo(ctx->da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0); assert(Mx == My);
   ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
-
-  /* local grid boundaries */
   ierr = DMDAGetCorners(ctx->da,&xs,&ys,NULL,&xm,&ym,NULL);
 
   /* compute function over the locally owned part of the grid */
+  double const h = 1.0 / (double)(Mx);
   for (j=ys; j<ys+ym; j++) {
     double const y = 2 * M_PI * h * j;
     for (i=xs; i<xs+xm; i++) {
@@ -559,8 +545,6 @@ PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
       u[j][i][0] = (cos(x) + cos(3*x)) * (cos(y) + cos(8*y));
     }
   }
-
-  /* restore vectors */
   ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
 
   PetscViewer viewer;
@@ -594,6 +578,7 @@ int main(int argc, char** argv)
   KSRun(dt, 1.0, &ctx);
 
   /* KSTestEvaluate(&ctx); */
+
   KSDestroy(&ctx);
   PetscFinalize();
 }
