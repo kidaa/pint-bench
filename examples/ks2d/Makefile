@@ -9,5 +9,5 @@
 CFLAGS  += -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 LDFLAGS += -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc -lm
 
-ks: ks.c
-	$(CC) -o ks $(CFLAGS) ks.c $(LDFLAGS)
+backward-euler.exe: ks/ks.h ks/ks.c backward-euler/backward-euler.c
+	$(CC) -o backward-euler.exe $(CFLAGS) -Iks ks/ks.c backward-euler/backward-euler.c $(LDFLAGS)

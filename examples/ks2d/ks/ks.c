@@ -1,4 +1,7 @@
-
+/*
+ * Fourth order finite-difference discretisation of spatial operators
+ * for 2d KS.
+ */
 
 #include <assert.h>
 #include <math.h>
@@ -9,47 +12,41 @@
 #include <petscsnes.h>
 #include <petscvec.h>
 
-typedef struct {
-  double dt;
-  DM     da;
-  SNES   snes;
-  Vec    r;
-  Mat    J;
-} KSCtx;
+#include "ks.h"
+
+
+/*******************************************************************************
+ * spatial discretization
+ */
 
 #undef __FUNCT__
 #define __FUNCT__ "KSEvaluate"
 /*
- * Evaluate f(x) := x - dt xdot(x).
+ * Evaluate f(x)
  */
 PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
 {
   KSCtx*         ctx = (KSCtx*) _ctx;
   PetscErrorCode ierr;
   Vec            lX;
-  PetscInt       i, j, Mx, My, xs, ys, xm, ym;
+  PetscInt       i, j, Mx, xs, ys, xm, ym;
   PetscScalar    ***x,***f;
   DM             da;
 
   PetscFunctionBeginUser;
-  ierr = DMDAGetInfo(ctx->da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0);
-  assert(Mx == My);
+  ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);
 
   double const hinv = (double) Mx;
   double const h2inv = hinv * hinv;
   double const h4inv = hinv * hinv * hinv * hinv;
 
-  /* ghost exchange */
-  ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
   ierr = DMGetLocalVector(da,&lX);CHKERRQ(ierr);
   ierr = DMGlobalToLocalBegin(da,X,INSERT_VALUES,lX);CHKERRQ(ierr);
   ierr = DMGlobalToLocalEnd(da,X,INSERT_VALUES,lX);CHKERRQ(ierr);
 
-  /* get arrays */
   ierr = DMDAVecGetArrayDOF(da,lX,&x);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOF(da,F,&f);CHKERRQ(ierr);
-
-  /* local grid boundaries */
   ierr = DMDAGetCorners(da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
 
   /* compute function over the locally owned part of the grid */
@@ -140,7 +137,7 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
 
       double const grad_sq = grad_x * grad_x + grad_y * grad_y;
 
-      f[j][i][0] = x[j][i][0] - ctx->dt * ( 0.5 * h2inv * grad_sq + h2inv * lap + h4inv * hyplap );
+      f[j][i][0] = 0.5 * h2inv * grad_sq + h2inv * lap + h4inv * hyplap;
     }
   }
 
@@ -153,70 +150,14 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
 }
 
 #undef __FUNCT__
-#define __FUNCT__ "KSTestEvaluate"
-/*
- * Test KSEvaluate using manufactured solution.
- */
-PetscErrorCode KSTestEvaluate(KSCtx *ctx)
-{
-  PetscErrorCode ierr;
-  PetscScalar    ***u, ***f;
-  PetscInt Mx, xs, ys, xm, ym;
-  Vec U, F, F2;
-
-  ierr = VecDuplicate(ctx->r, &U);
-  ierr = VecDuplicate(ctx->r, &F);
-  ierr = VecDuplicate(ctx->r, &F2);
-
-  /* create test state and exact evaluation */
-  ierr = DMDAGetInfo(ctx->da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);
-  ierr = DMDAGetCorners(ctx->da,&xs,&ys,NULL,&xm,&ym,NULL);
-  ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
-  ierr = DMDAVecGetArrayDOF(ctx->da,F,&f);
-
-  ctx->dt = 1.e-4;
-
-  int i, j;
-  double const h = 1.0 / (double)(Mx);
-  for (j=ys; j<ys+ym; j++) {
-    double const y = h * j;
-    for (i=xs; i<xs+xm; i++) {
-      double const x = h * i;
-      u[j][i][0] = sin(2*M_PI*y);
-      f[j][i][0] = sin(2*M_PI*y) - ctx->dt *
-        (
-         0.5 * (2*M_PI)*(2*M_PI)*cos(2*M_PI*y)*cos(2*M_PI*y)
-         - (2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
-         + (2*M_PI)*(2*M_PI)*(2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
-          );
-    }
-  }
-
-  ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
-  ierr = DMDAVecRestoreArrayDOF(ctx->da,F,&f);
-
-  KSEvaluate(ctx->snes, U, F2, ctx);
-
-  VecAXPY(F, -1.0, F2);
-  PetscReal norm;
-  VecNorm(F, NORM_INFINITY, &norm);
-  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F-F1| = %g\n", norm);
-
-  VecDestroy(&F2);
-  VecDestroy(&F);
-  VecDestroy(&U);
-}
-
-
-#undef __FUNCT__
 #define __FUNCT__ "KSJacobian"
 /*
- * Evaluate J(x) := df(x)/dx = 1 - dt dxdot/dx.
+ * Evaluate J(x) := df(x)/dx
  */
 PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
 {
+  KSCtx*         ctx = (KSCtx*) _ctx;
   PetscErrorCode ierr;
-  KSCtx* ctx = (KSCtx*) _ctx;
   Vec            lX;
   PetscInt       i, j, Mx, My, xs, ys, xm, ym;
   PetscScalar    ***x,***f;
@@ -245,79 +186,75 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
   ierr = DMDAGetCorners(da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
 
   MatStencil row, cols[49];
-  PetscReal  one[1], grad_sq[6], lap[13], hyplap[49];
+  PetscReal  grad_sq[6], lap[13], hyplap[49];
 
-  one[0] = 1.0;
+  lap[0] = h2inv * (   0.011111111111);
+  lap[1] = h2inv * (  -0.150000000000);
+  lap[2] = h2inv * (   1.500000000000);
+  lap[3] = h2inv * (   0.011111111111);
+  lap[4] = h2inv * (  -0.150000000000);
+  lap[5] = h2inv * (   1.500000000000);
+  lap[6] = h2inv * (  -5.444444444444);
+  lap[7] = h2inv * (   1.500000000000);
+  lap[8] = h2inv * (  -0.150000000000);
+  lap[9] = h2inv * (   0.011111111111);
+  lap[10] = h2inv * (   1.500000000000);
+  lap[11] = h2inv * (  -0.150000000000);
+  lap[12] = h2inv * (   0.011111111111);
 
-  lap[0] = -ctx->dt * h2inv * (   0.011111111111);
-  lap[1] = -ctx->dt * h2inv * (  -0.150000000000);
-  lap[2] = -ctx->dt * h2inv * (   1.500000000000);
-  lap[3] = -ctx->dt * h2inv * (   0.011111111111);
-  lap[4] = -ctx->dt * h2inv * (  -0.150000000000);
-  lap[5] = -ctx->dt * h2inv * (   1.500000000000);
-  lap[6] = -ctx->dt * h2inv * (  -5.444444444444);
-  lap[7] = -ctx->dt * h2inv * (   1.500000000000);
-  lap[8] = -ctx->dt * h2inv * (  -0.150000000000);
-  lap[9] = -ctx->dt * h2inv * (   0.011111111111);
-  lap[10] = -ctx->dt * h2inv * (   1.500000000000);
-  lap[11] = -ctx->dt * h2inv * (  -0.150000000000);
-  lap[12] = -ctx->dt * h2inv * (   0.011111111111);
-
-  hyplap[0] = -ctx->dt * h4inv * (   0.000246913580);
-  hyplap[1] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[2] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[3] = -ctx->dt * h4inv * (  -0.227160493827);
-  hyplap[4] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[5] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[6] = -ctx->dt * h4inv * (   0.000246913580);
-  hyplap[7] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[8] = -ctx->dt * h4inv * (   0.045000000000);
-  hyplap[9] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[10] = -ctx->dt * h4inv * (   2.816666666667);
-  hyplap[11] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[12] = -ctx->dt * h4inv * (   0.045000000000);
-  hyplap[13] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[14] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[15] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[16] = -ctx->dt * h4inv * (   4.500000000000);
-  hyplap[17] = -ctx->dt * h4inv * ( -14.666666666667);
-  hyplap[18] = -ctx->dt * h4inv * (   4.500000000000);
-  hyplap[19] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[20] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[21] = -ctx->dt * h4inv * (  -0.227160493827);
-  hyplap[22] = -ctx->dt * h4inv * (   2.816666666667);
-  hyplap[23] = -ctx->dt * h4inv * ( -14.666666666667);
-  hyplap[24] = -ctx->dt * h4inv * (  33.487654320988);
-  hyplap[25] = -ctx->dt * h4inv * ( -14.666666666667);
-  hyplap[26] = -ctx->dt * h4inv * (   2.816666666667);
-  hyplap[27] = -ctx->dt * h4inv * (  -0.227160493827);
-  hyplap[28] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[29] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[30] = -ctx->dt * h4inv * (   4.500000000000);
-  hyplap[31] = -ctx->dt * h4inv * ( -14.666666666667);
-  hyplap[32] = -ctx->dt * h4inv * (   4.500000000000);
-  hyplap[33] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[34] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[35] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[36] = -ctx->dt * h4inv * (   0.045000000000);
-  hyplap[37] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[38] = -ctx->dt * h4inv * (   2.816666666667);
-  hyplap[39] = -ctx->dt * h4inv * (  -0.450000000000);
-  hyplap[40] = -ctx->dt * h4inv * (   0.045000000000);
-  hyplap[41] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[42] = -ctx->dt * h4inv * (   0.000246913580);
-  hyplap[43] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[44] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[45] = -ctx->dt * h4inv * (  -0.227160493827);
-  hyplap[46] = -ctx->dt * h4inv * (   0.033333333333);
-  hyplap[47] = -ctx->dt * h4inv * (  -0.003333333333);
-  hyplap[48] = -ctx->dt * h4inv * (   0.000246913580);
+  hyplap[0] = h4inv * (   0.000246913580);
+  hyplap[1] = h4inv * (  -0.003333333333);
+  hyplap[2] = h4inv * (   0.033333333333);
+  hyplap[3] = h4inv * (  -0.227160493827);
+  hyplap[4] = h4inv * (   0.033333333333);
+  hyplap[5] = h4inv * (  -0.003333333333);
+  hyplap[6] = h4inv * (   0.000246913580);
+  hyplap[7] = h4inv * (  -0.003333333333);
+  hyplap[8] = h4inv * (   0.045000000000);
+  hyplap[9] = h4inv * (  -0.450000000000);
+  hyplap[10] = h4inv * (   2.816666666667);
+  hyplap[11] = h4inv * (  -0.450000000000);
+  hyplap[12] = h4inv * (   0.045000000000);
+  hyplap[13] = h4inv * (  -0.003333333333);
+  hyplap[14] = h4inv * (   0.033333333333);
+  hyplap[15] = h4inv * (  -0.450000000000);
+  hyplap[16] = h4inv * (   4.500000000000);
+  hyplap[17] = h4inv * ( -14.666666666667);
+  hyplap[18] = h4inv * (   4.500000000000);
+  hyplap[19] = h4inv * (  -0.450000000000);
+  hyplap[20] = h4inv * (   0.033333333333);
+  hyplap[21] = h4inv * (  -0.227160493827);
+  hyplap[22] = h4inv * (   2.816666666667);
+  hyplap[23] = h4inv * ( -14.666666666667);
+  hyplap[24] = h4inv * (  33.487654320988);
+  hyplap[25] = h4inv * ( -14.666666666667);
+  hyplap[26] = h4inv * (   2.816666666667);
+  hyplap[27] = h4inv * (  -0.227160493827);
+  hyplap[28] = h4inv * (   0.033333333333);
+  hyplap[29] = h4inv * (  -0.450000000000);
+  hyplap[30] = h4inv * (   4.500000000000);
+  hyplap[31] = h4inv * ( -14.666666666667);
+  hyplap[32] = h4inv * (   4.500000000000);
+  hyplap[33] = h4inv * (  -0.450000000000);
+  hyplap[34] = h4inv * (   0.033333333333);
+  hyplap[35] = h4inv * (  -0.003333333333);
+  hyplap[36] = h4inv * (   0.045000000000);
+  hyplap[37] = h4inv * (  -0.450000000000);
+  hyplap[38] = h4inv * (   2.816666666667);
+  hyplap[39] = h4inv * (  -0.450000000000);
+  hyplap[40] = h4inv * (   0.045000000000);
+  hyplap[41] = h4inv * (  -0.003333333333);
+  hyplap[42] = h4inv * (   0.000246913580);
+  hyplap[43] = h4inv * (  -0.003333333333);
+  hyplap[44] = h4inv * (   0.033333333333);
+  hyplap[45] = h4inv * (  -0.227160493827);
+  hyplap[46] = h4inv * (   0.033333333333);
+  hyplap[47] = h4inv * (  -0.003333333333);
+  hyplap[48] = h4inv * (   0.000246913580);
 
   for (j=ys; j<ys+ym; j++) {
     for (i=xs; i<xs+xm; i++) {
       row.i = i; row.j = j;
-
-      MatSetValuesStencil(J, 1, &row, 1, &row, one, ADD_VALUES);
 
       /* laplacian */
       cols[0].i = i-3; cols[0].j = j+0;
@@ -405,7 +342,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
         + x[j][i+2][0] * (  -0.150000000000)
         + x[j][i+3][0] * (   0.016666666667);
 
-      double const a = -ctx->dt * h2inv * grad_x;
+      double const a = h2inv * grad_x;
 
       grad_sq[0] = a * (  -0.016666666667);
       grad_sq[1] = a * (   0.150000000000);
@@ -432,7 +369,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
         + x[j+2][i][0] * (  -0.150000000000)
         + x[j+3][i][0] * (   0.016666666667);
 
-      double const b = -ctx->dt * h2inv * grad_y;
+      double const b = h2inv * grad_y;
 
       grad_sq[0] = b * (  -0.016666666667);
       grad_sq[1] = b * (   0.150000000000);
@@ -461,6 +398,48 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
   PetscFunctionReturn(0);
 }
 
+
+/*******************************************************************************
+ * backward euler solver
+ */
+
+#undef __FUNCT__
+#define __FUNCT__ "KSBEEvaluate"
+/*
+ * Evaluate f(x) := x - dt xdot(x).
+ */
+PetscErrorCode KSBEEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
+{
+  KSCtx* ctx = (KSCtx*) _ctx;
+  PetscErrorCode ierr;
+
+  PetscFunctionBeginUser;
+  ierr = KSEvaluate(snes, X, F, ctx);CHKERRQ(ierr);
+  VecAXPBY(F,1.0,ctx->dt,X);
+  PetscFunctionReturn(0);
+}
+
+#undef __FUNCT__
+#define __FUNCT__ "KSBEJacobian"
+/*
+ * Evaluate J(x) := df(x)/dx = 1 - dt dxdot/dx.
+ */
+PetscErrorCode KSBEJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
+{
+  KSCtx* ctx = (KSCtx*) _ctx;
+  PetscErrorCode ierr;
+
+  PetscFunctionBeginUser;
+  ierr = KSJacobian(snes, X, J, B, ctx);CHKERRQ(ierr);
+  MatScale(J, ctx->dt);
+  MatShift(J, 1.0);
+  /* if (B) { */
+  /*   MatScale(B, -ctx->dt); */
+  /*   MatShift(B, 1.0); */
+  /* } */
+  PetscFunctionReturn(0);
+}
+
 #undef __FUNCT__
 #define __FUNCT__ "KSBESolve"
 /*
@@ -475,11 +454,16 @@ PetscErrorCode KSBESolve(Vec x, double dt, Vec xdot, Vec rhs, KSCtx* ctx)
   PetscFunctionBeginUser;
   ctx->dt = dt;
   ierr = SNESSolve(ctx->snes, rhs, x);CHKERRQ(ierr);
-  SNESGetIterationNumber(ctx->snes,&its);
+  SNESGetIterationNumber(ctx->snes, &its);
   SNESGetConvergedReason(ctx->snes, &reason);
   PetscPrintf(PETSC_COMM_WORLD,"Number of SNES iterations = %D, %s\n",its,SNESConvergedReasons[reason]);
   PetscFunctionReturn(0);
 }
+
+
+/*******************************************************************************
+ * context create/destroy
+ */
 
 #undef __FUNCT__
 #define __FUNCT__ "KSCreate"
@@ -502,8 +486,8 @@ PetscErrorCode KSCreate(MPI_Comm comm, KSCtx* ctx)
 
   /* create non-linear solver */
   ierr = SNESCreate(comm, &ctx->snes); CHKERRQ(ierr);
-  SNESSetFunction(ctx->snes, ctx->r, KSEvaluate, ctx);
-  SNESSetJacobian(ctx->snes, ctx->J, ctx->J, KSJacobian, ctx);
+  SNESSetFunction(ctx->snes, ctx->r, KSBEEvaluate, ctx);
+  SNESSetJacobian(ctx->snes, ctx->J, ctx->J, KSBEJacobian, ctx);
   SNESSetDM(ctx->snes,ctx->da);
   SNESSetFromOptions(ctx->snes);
   PetscFunctionReturn(0);
@@ -517,68 +501,62 @@ void KSDestroy(KSCtx* ctx)
   DMDestroy(&ctx->da);
 }
 
+
+/*******************************************************************************
+ * tests
+ */
+
 #undef __FUNCT__
-#define __FUNCT__ "KSRun"
-PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
+#define __FUNCT__ "KSTestEvaluate"
+/*
+ * Test KSEvaluate using manufactured solution.
+ */
+PetscErrorCode KSTestEvaluate(KSCtx *ctx)
 {
   PetscErrorCode ierr;
-  PetscInt i, j, Mx, My, xs, ys, xm, ym;
-  Vec U, Udot, RHS;
-  PetscScalar    ***u;
-
-  PetscFunctionBeginUser;
+  PetscScalar    ***u, ***f;
+  PetscInt Mx, xs, ys, xm, ym;
+  Vec U, F, F2;
 
   ierr = VecDuplicate(ctx->r, &U);
-  ierr = VecDuplicate(ctx->r, &Udot);
-  ierr = VecDuplicate(ctx->r, &RHS);
+  ierr = VecDuplicate(ctx->r, &F);
+  ierr = VecDuplicate(ctx->r, &F2);
 
-  ierr = DMDAGetInfo(ctx->da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0); assert(Mx == My);
-  ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
+  /* create test state and exact evaluation */
+  ierr = DMDAGetInfo(ctx->da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);
   ierr = DMDAGetCorners(ctx->da,&xs,&ys,NULL,&xm,&ym,NULL);
+  ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
+  ierr = DMDAVecGetArrayDOF(ctx->da,F,&f);
 
-  /* compute function over the locally owned part of the grid */
+  ctx->dt = 1.e-4;
+
+  int i, j;
   double const h = 1.0 / (double)(Mx);
   for (j=ys; j<ys+ym; j++) {
-    double const y = 2 * M_PI * h * j;
+    double const y = h * j;
     for (i=xs; i<xs+xm; i++) {
-      double const x = 2 * M_PI * h * i;
-      u[j][i][0] = (cos(x) + cos(3*x)) * (cos(y) + cos(8*y));
+      double const x = h * i;
+      u[j][i][0] = sin(2*M_PI*y);
+      f[j][i][0] = sin(2*M_PI*y) + ctx->dt *
+        (
+         0.5 * (2*M_PI)*(2*M_PI)*cos(2*M_PI*y)*cos(2*M_PI*y)
+         - (2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
+         + (2*M_PI)*(2*M_PI)*(2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
+          );
     }
   }
+
   ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
+  ierr = DMDAVecRestoreArrayDOF(ctx->da,F,&f);
 
-  PetscViewer viewer;
-  PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,NULL,0,0,300,300,&viewer);
-  PetscViewerPushFormat(viewer,PETSC_VIEWER_DRAW_LG);
+  KSBEEvaluate(ctx->snes, U, F2, ctx);
 
-  double t = 0;
-  while (t < tend) {
-    VecView(U,viewer);
-    VecCopy(U, RHS);
-    ierr = KSBESolve(U, dt, Udot, RHS, ctx);CHKERRQ(ierr);
-    t += dt;
-  }
+  VecAXPY(F, -1.0, F2);
+  PetscReal norm;
+  VecNorm(F, NORM_INFINITY, &norm);
+  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F-F1| = %g\n", norm);
 
-  VecDestroy(&RHS);
-  VecDestroy(&Udot);
+  VecDestroy(&F2);
+  VecDestroy(&F);
   VecDestroy(&U);
-  PetscFunctionReturn(0);
-}
-
-int main(int argc, char** argv)
-{
-  PetscReal dt;
-  KSCtx ctx;
-
-  PetscInitialize(&argc, &argv, NULL, NULL);
-  KSCreate(MPI_COMM_WORLD, &ctx);
-
-  dt = 5.e-12;
-  PetscOptionsGetReal(NULL, "-dt", &dt, NULL);
-  KSRun(dt, 1.0, &ctx);
-
-  /* KSTestEvaluate(&ctx); */
-
-  KSDestroy(&ctx);
-  PetscFinalize();
 }
