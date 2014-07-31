@@ -245,61 +245,98 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
   ierr = DMDAGetCorners(da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
 
   MatStencil row, cols[49];
-  PetscReal  lap_hyplap[49], grad_sq[6];
+  PetscReal  one[1], grad_sq[6], lap[13], hyplap[49];
 
-  lap_hyplap[0] = -ctx->dt * h4inv * (   0.000246913580);
-  lap_hyplap[1] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[2] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[3] = -ctx->dt * h4inv * (  -0.216049382716);
-  lap_hyplap[4] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[5] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[6] = -ctx->dt * h4inv * (   0.000246913580);
-  lap_hyplap[7] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[8] = -ctx->dt * h4inv * (   0.045000000000);
-  lap_hyplap[9] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[10] = -ctx->dt * h4inv * (   2.666666666667);
-  lap_hyplap[11] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[12] = -ctx->dt * h4inv * (   0.045000000000);
-  lap_hyplap[13] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[14] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[15] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[16] = -ctx->dt * h4inv * (   4.500000000000);
-  lap_hyplap[17] = -ctx->dt * h4inv * ( -13.166666666667);
-  lap_hyplap[18] = -ctx->dt * h4inv * (   4.500000000000);
-  lap_hyplap[19] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[20] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[21] = -ctx->dt * h4inv * (  -0.216049382716);
-  lap_hyplap[22] = -ctx->dt * h4inv * (   2.666666666667);
-  lap_hyplap[23] = -ctx->dt * h4inv * ( -13.166666666667);
-  lap_hyplap[24] = 1.0 - ctx->dt * h4inv * (  28.043209876543);
-  lap_hyplap[25] = -ctx->dt * h4inv * ( -13.166666666667);
-  lap_hyplap[26] = -ctx->dt * h4inv * (   2.666666666667);
-  lap_hyplap[27] = -ctx->dt * h4inv * (  -0.216049382716);
-  lap_hyplap[28] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[29] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[30] = -ctx->dt * h4inv * (   4.500000000000);
-  lap_hyplap[31] = -ctx->dt * h4inv * ( -13.166666666667);
-  lap_hyplap[32] = -ctx->dt * h4inv * (   4.500000000000);
-  lap_hyplap[33] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[34] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[35] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[36] = -ctx->dt * h4inv * (   0.045000000000);
-  lap_hyplap[37] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[38] = -ctx->dt * h4inv * (   2.666666666667);
-  lap_hyplap[39] = -ctx->dt * h4inv * (  -0.450000000000);
-  lap_hyplap[40] = -ctx->dt * h4inv * (   0.045000000000);
-  lap_hyplap[41] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[42] = -ctx->dt * h4inv * (   0.000246913580);
-  lap_hyplap[43] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[44] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[45] = -ctx->dt * h4inv * (  -0.216049382716);
-  lap_hyplap[46] = -ctx->dt * h4inv * (   0.033333333333);
-  lap_hyplap[47] = -ctx->dt * h4inv * (  -0.003333333333);
-  lap_hyplap[48] = -ctx->dt * h4inv * (   0.000246913580);
+  one[0] = 1.0;
+
+  lap[0] = -ctx->dt * h2inv * (   0.011111111111);
+  lap[1] = -ctx->dt * h2inv * (  -0.150000000000);
+  lap[2] = -ctx->dt * h2inv * (   1.500000000000);
+  lap[3] = -ctx->dt * h2inv * (   0.011111111111);
+  lap[4] = -ctx->dt * h2inv * (  -0.150000000000);
+  lap[5] = -ctx->dt * h2inv * (   1.500000000000);
+  lap[6] = -ctx->dt * h2inv * (  -5.444444444444);
+  lap[7] = -ctx->dt * h2inv * (   1.500000000000);
+  lap[8] = -ctx->dt * h2inv * (  -0.150000000000);
+  lap[9] = -ctx->dt * h2inv * (   0.011111111111);
+  lap[10] = -ctx->dt * h2inv * (   1.500000000000);
+  lap[11] = -ctx->dt * h2inv * (  -0.150000000000);
+  lap[12] = -ctx->dt * h2inv * (   0.011111111111);
+
+  hyplap[0] = -ctx->dt * h4inv * (   0.000246913580);
+  hyplap[1] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[2] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[3] = -ctx->dt * h4inv * (  -0.227160493827);
+  hyplap[4] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[5] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[6] = -ctx->dt * h4inv * (   0.000246913580);
+  hyplap[7] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[8] = -ctx->dt * h4inv * (   0.045000000000);
+  hyplap[9] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[10] = -ctx->dt * h4inv * (   2.816666666667);
+  hyplap[11] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[12] = -ctx->dt * h4inv * (   0.045000000000);
+  hyplap[13] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[14] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[15] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[16] = -ctx->dt * h4inv * (   4.500000000000);
+  hyplap[17] = -ctx->dt * h4inv * ( -14.666666666667);
+  hyplap[18] = -ctx->dt * h4inv * (   4.500000000000);
+  hyplap[19] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[20] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[21] = -ctx->dt * h4inv * (  -0.227160493827);
+  hyplap[22] = -ctx->dt * h4inv * (   2.816666666667);
+  hyplap[23] = -ctx->dt * h4inv * ( -14.666666666667);
+  hyplap[24] = -ctx->dt * h4inv * (  33.487654320988);
+  hyplap[25] = -ctx->dt * h4inv * ( -14.666666666667);
+  hyplap[26] = -ctx->dt * h4inv * (   2.816666666667);
+  hyplap[27] = -ctx->dt * h4inv * (  -0.227160493827);
+  hyplap[28] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[29] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[30] = -ctx->dt * h4inv * (   4.500000000000);
+  hyplap[31] = -ctx->dt * h4inv * ( -14.666666666667);
+  hyplap[32] = -ctx->dt * h4inv * (   4.500000000000);
+  hyplap[33] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[34] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[35] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[36] = -ctx->dt * h4inv * (   0.045000000000);
+  hyplap[37] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[38] = -ctx->dt * h4inv * (   2.816666666667);
+  hyplap[39] = -ctx->dt * h4inv * (  -0.450000000000);
+  hyplap[40] = -ctx->dt * h4inv * (   0.045000000000);
+  hyplap[41] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[42] = -ctx->dt * h4inv * (   0.000246913580);
+  hyplap[43] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[44] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[45] = -ctx->dt * h4inv * (  -0.227160493827);
+  hyplap[46] = -ctx->dt * h4inv * (   0.033333333333);
+  hyplap[47] = -ctx->dt * h4inv * (  -0.003333333333);
+  hyplap[48] = -ctx->dt * h4inv * (   0.000246913580);
 
   for (j=ys; j<ys+ym; j++) {
     for (i=xs; i<xs+xm; i++) {
       row.i = i; row.j = j;
+
+      MatSetValuesStencil(J, 1, &row, 1, &row, one, ADD_VALUES);
+
+      /* laplacian */
+      cols[0].i = i-3; cols[0].j = j+0;
+      cols[1].i = i-2; cols[1].j = j+0;
+      cols[2].i = i-1; cols[2].j = j+0;
+      cols[3].i = i+0; cols[3].j = j-3;
+      cols[4].i = i+0; cols[4].j = j-2;
+      cols[5].i = i+0; cols[5].j = j-1;
+      cols[6].i = i+0; cols[6].j = j+0;
+      cols[7].i = i+0; cols[7].j = j+1;
+      cols[8].i = i+0; cols[8].j = j+2;
+      cols[9].i = i+0; cols[9].j = j+3;
+      cols[10].i = i+1; cols[10].j = j+0;
+      cols[11].i = i+2; cols[11].j = j+0;
+      cols[12].i = i+3; cols[12].j = j+0;
+
+      MatSetValuesStencil(J, 1, &row, 13, cols, lap, ADD_VALUES);
+
+      /* hyperlaplacian */
       cols[0].i = i-3; cols[0].j = j-3;
       cols[1].i = i-3; cols[1].j = j-2;
       cols[2].i = i-3; cols[2].j = j-1;
@@ -350,8 +387,9 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
       cols[47].i = i+3; cols[47].j = j+2;
       cols[48].i = i+3; cols[48].j = j+3;
 
-      MatSetValuesStencil(J, 1, &row, 49, cols, lap_hyplap, ADD_VALUES);
+      MatSetValuesStencil(J, 1, &row, 49, cols, hyplap, ADD_VALUES);
 
+      /* grad_x^2 */
       cols[0].i = i-3; cols[0].j = j;
       cols[1].i = i-2; cols[1].j = j;
       cols[2].i = i-1; cols[2].j = j;
@@ -378,6 +416,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
 
       MatSetValuesStencil(J, 1, &row, 6, cols, grad_sq, ADD_VALUES);
 
+      /* grad_y^2 */
       cols[0].i = i; cols[0].j = j-3;
       cols[1].i = i; cols[1].j = j-2;
       cols[2].i = i; cols[2].j = j-1;
@@ -462,7 +501,7 @@ PetscErrorCode KSCreate(MPI_Comm comm, KSCtx* ctx)
 
   /* create da and work vectors */
   ierr = DMDACreate2d(comm, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DMDA_STENCIL_BOX,
-                      -64, -64, PETSC_DECIDE, PETSC_DECIDE,
+                      -128, -128, PETSC_DECIDE, PETSC_DECIDE,
                       1, 3, NULL, NULL, &ctx->da); CHKERRQ(ierr);
 
   DMCreateGlobalVector(ctx->da, &ctx->r);
@@ -491,13 +530,13 @@ PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
 {
   PetscErrorCode ierr;
   PetscInt i, j, Mx, My, xs, ys, xm, ym;
-  Vec X, Xdot, RHS;
-  PetscScalar    ***x;
+  Vec U, Udot, RHS;
+  PetscScalar    ***u;
 
   PetscFunctionBeginUser;
 
-  ierr = VecDuplicate(ctx->r, &X);
-  ierr = VecDuplicate(ctx->r, &Xdot);
+  ierr = VecDuplicate(ctx->r, &U);
+  ierr = VecDuplicate(ctx->r, &Udot);
   ierr = VecDuplicate(ctx->r, &RHS);
 
   // need to put something more interesting here...
@@ -507,20 +546,22 @@ PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
   double const h = 1.0 / (double)(Mx);
 
   /* get arrays */
-  ierr = DMDAVecGetArrayDOF(ctx->da,X,&x);
+  ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
 
   /* local grid boundaries */
   ierr = DMDAGetCorners(ctx->da,&xs,&ys,NULL,&xm,&ym,NULL);
 
   /* compute function over the locally owned part of the grid */
   for (j=ys; j<ys+ym; j++) {
+    double const y = 2 * M_PI * h * j;
     for (i=xs; i<xs+xm; i++) {
-      x[j][i][0] = sin(2*M_PI*h*i) * sin(2*M_PI*h*j) + sin(5*2*M_PI*h*i) * sin(4*2*M_PI*h*j);
+      double const x = 2 * M_PI * h * i;
+      u[j][i][0] = (cos(x) + cos(3*x)) * (cos(y) + cos(8*y));
     }
   }
 
   /* restore vectors */
-  ierr = DMDAVecRestoreArrayDOF(ctx->da,X,&x);
+  ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
 
   PetscViewer viewer;
   PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,NULL,0,0,300,300,&viewer);
@@ -528,25 +569,30 @@ PetscErrorCode KSRun(double dt, double tend, KSCtx* ctx)
 
   double t = 0;
   while (t < tend) {
-    VecCopy(X, RHS);
-    ierr = KSBESolve(X, dt, Xdot, RHS, ctx);CHKERRQ(ierr);
+    VecView(U,viewer);
+    VecCopy(U, RHS);
+    ierr = KSBESolve(U, dt, Udot, RHS, ctx);CHKERRQ(ierr);
     t += dt;
-    VecView(X,viewer);
   }
 
   VecDestroy(&RHS);
-  VecDestroy(&Xdot);
-  VecDestroy(&X);
+  VecDestroy(&Udot);
+  VecDestroy(&U);
   PetscFunctionReturn(0);
 }
 
 int main(int argc, char** argv)
 {
+  PetscReal dt;
   KSCtx ctx;
 
   PetscInitialize(&argc, &argv, NULL, NULL);
   KSCreate(MPI_COMM_WORLD, &ctx);
-  KSRun(0.0001, 1.0, &ctx);
+
+  dt = 5.e-12;
+  PetscOptionsGetReal(NULL, "-dt", &dt, NULL);
+  KSRun(dt, 1.0, &ctx);
+
   /* KSTestEvaluate(&ctx); */
   KSDestroy(&ctx);
   PetscFinalize();
