@@ -3,7 +3,6 @@
  * for 2d KS.
  */
 
-#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -24,9 +23,8 @@
 /*
  * Evaluate f(x)
  */
-PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
+PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *ctx)
 {
-  KSCtx*         ctx = (KSCtx*) _ctx;
   PetscErrorCode ierr;
   Vec            lX;
   PetscInt       i, j, Mx, xs, ys, xm, ym;
@@ -154,13 +152,12 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
 /*
  * Evaluate J(x) := df(x)/dx
  */
-PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
+PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
 {
-  KSCtx*         ctx = (KSCtx*) _ctx;
   PetscErrorCode ierr;
   Vec            lX;
   PetscInt       i, j, Mx, My, xs, ys, xm, ym;
-  PetscScalar    ***x,***f;
+  PetscScalar    ***x;
   DM             da;
 
   PetscFunctionBeginUser;
@@ -168,7 +165,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
 
   ierr = SNESGetDM(snes,&da);
   ierr = DMDAGetInfo(da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0);
-  assert(Mx == My);
+  //  assert(Mx == My);
 
   double const hinv = (double) Mx;
   double const h2inv = hinv * hinv;
@@ -408,14 +405,14 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
 /*
  * Evaluate f(x) := x - dt xdot(x).
  */
-PetscErrorCode KSBEEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
+PetscErrorCode KSBEEvaluate(SNES snes, Vec X, Vec F, void *ctx)
 {
-  KSCtx* ctx = (KSCtx*) _ctx;
+  KSCtx* ks = (KSCtx*) ctx;
   PetscErrorCode ierr;
 
   PetscFunctionBeginUser;
   ierr = KSEvaluate(snes, X, F, ctx);CHKERRQ(ierr);
-  VecAXPBY(F,1.0,ctx->dt,X);
+  VecAXPBY(F,1.0,ks->dt,X);
   PetscFunctionReturn(0);
 }
 
@@ -424,14 +421,14 @@ PetscErrorCode KSBEEvaluate(SNES snes, Vec X, Vec F, void *_ctx)
 /*
  * Evaluate J(x) := df(x)/dx = 1 - dt dxdot/dx.
  */
-PetscErrorCode KSBEJacobian(SNES snes, Vec X, Mat J, Mat B, void* _ctx)
+PetscErrorCode KSBEJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
 {
-  KSCtx* ctx = (KSCtx*) _ctx;
+  KSCtx* ks = (KSCtx*) ctx;
   PetscErrorCode ierr;
 
   PetscFunctionBeginUser;
   ierr = KSJacobian(snes, X, J, B, ctx);CHKERRQ(ierr);
-  MatScale(J, ctx->dt);
+  MatScale(J, ks->dt);
   MatShift(J, 1.0);
   /* if (B) { */
   /*   MatScale(B, -ctx->dt); */
@@ -501,6 +498,32 @@ void KSDestroy(KSCtx* ctx)
   DMDestroy(&ctx->da);
 }
 
+#undef __FUNCT__
+#define __FUNCT__ "KSInitial"
+PetscErrorCode KSInitial(Vec U, KSCtx* ks)
+{
+  PetscErrorCode ierr;
+  PetscInt       i, j, Mx, My, xs, ys, xm, ym;
+  PetscScalar    ***u;
+
+  PetscFunctionBeginUser;
+  ierr = DMDAGetInfo(ks->da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0); CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOF(ks->da,U,&u);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(ks->da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
+
+  double const h = 1.0 / (double)(Mx);
+  for (j=ys; j<ys+ym; j++) {
+    double const y = 2 * M_PI * h * j;
+    for (i=xs; i<xs+xm; i++) {
+      double const x = 2 * M_PI * h * i;
+      u[j][i][0] = (cos(x) + cos(8*x));// * (cos(y) + cos(16*y));
+    }
+  }
+
+  ierr = DMDAVecRestoreArrayDOF(ks->da,U,&u);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 
 /*******************************************************************************
  * tests
@@ -532,31 +555,50 @@ PetscErrorCode KSTestEvaluate(KSCtx *ctx)
 
   int i, j;
   double const h = 1.0 / (double)(Mx);
+  double const pi = M_PI;
+  double const pi2 = pi * pi;
+  double const pi4 = pi2 * pi2;
   for (j=ys; j<ys+ym; j++) {
     double const y = h * j;
     for (i=xs; i<xs+xm; i++) {
       double const x = h * i;
-      u[j][i][0] = sin(2*M_PI*y);
-      f[j][i][0] = sin(2*M_PI*y) + ctx->dt *
-        (
-         0.5 * (2*M_PI)*(2*M_PI)*cos(2*M_PI*y)*cos(2*M_PI*y)
-         - (2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
-         + (2*M_PI)*(2*M_PI)*(2*M_PI)*(2*M_PI)*sin(2*M_PI*y)
-          );
+      double const cosx = cos(2*pi*x);
+      double const cosy = cos(4*pi*y);
+      double const sinx = sin(2*pi*x);
+      double const siny = sin(4*pi*y);
+
+      u[j][i][0] = 1.0;
+      f[j][i][0] = 0.0;
+
+      /* u[j][i][0] = cosx; */
+      /* f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx ) - 4*pi2*cosx + 16*pi4*cosx; */
+
+      /* u[j][i][0] = cosx * cosy; */
+      /* f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx*cosy*cosy + 16*pi2*cosx*cosx*siny*siny ) */
+      /* 	- 4*pi2*cosx*cosy - 16*pi2*cosx*cosy */
+      /* 	+ 2*(64*pi4*cosx*cosy) */
+      /* 	+ 16*pi4*cosx*cosy + 256*pi4*cosx*cosy; */
     }
   }
 
   ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
   ierr = DMDAVecRestoreArrayDOF(ctx->da,F,&f);
 
-  KSBEEvaluate(ctx->snes, U, F2, ctx);
+  PetscReal norm1, norm2;
+  VecNorm(F, NORM_INFINITY, &norm1);
+  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F1|    = %g\n", norm1);
+
+  KSEvaluate(ctx->snes, U, F2, ctx);
+  VecNorm(F2, NORM_INFINITY, &norm2);
+  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F2|    = %g\n", norm2);
 
   VecAXPY(F, -1.0, F2);
-  PetscReal norm;
-  VecNorm(F, NORM_INFINITY, &norm);
-  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F-F1| = %g\n", norm);
+  VecNorm(F, NORM_INFINITY, &norm2);
+  PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F1-F2| = %g\n", norm2);///norm1);
 
   VecDestroy(&F2);
   VecDestroy(&F);
   VecDestroy(&U);
+
+  return 0;
 }
