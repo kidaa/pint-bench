@@ -46,11 +46,11 @@ int main(int argc, char** argv)
   PetscInitialize(&argc, &argv, NULL, NULL);
   KSCreate(MPI_COMM_WORLD, &ks);
 
-  KSTestEvaluate(&ks);
+  /* KSTestEvaluate(&ks); */
 
-  /* dt = 5.e-12; */
-  /* PetscOptionsGetReal(NULL, "-dt", &dt, NULL); */
-  /* KSBERun(dt, 1.0, &ks); */
+  dt = 5.e-12;
+  PetscOptionsGetReal(NULL, "-dt", &dt, NULL);
+  KSBERun(dt, 1.0, &ks);
 
   KSDestroy(&ks);
   PetscFinalize();

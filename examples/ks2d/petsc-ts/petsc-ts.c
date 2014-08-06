@@ -17,7 +17,7 @@ PetscErrorCode KSTSRHSFunction(TS ts, PetscReal t, Vec X, Vec F, void* ctx)
   PetscFunctionBeginUser;
   ierr = TSGetSNES(ts,&snes);CHKERRQ(ierr);
   ierr = KSEvaluate(snes, X, F, ctx);CHKERRQ(ierr);
-  VecScale(F, -1.0);
+  //  VecScale(F, -1.0);
   PetscFunctionReturn(0);
 }
 
@@ -31,7 +31,7 @@ PetscErrorCode KSTSRHSJacobian(TS ts, PetscReal t, Vec X, Mat J, Mat B, void* ct
   PetscFunctionBeginUser;
   ierr = TSGetSNES(ts,&snes);CHKERRQ(ierr);
   ierr = KSJacobian(snes, X, J, B, ctx);CHKERRQ(ierr);
-  MatScale(J, -1.0);
+  //  MatScale(J, -1.0);
   PetscFunctionReturn(0);
 }
 

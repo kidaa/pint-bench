@@ -33,7 +33,7 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *ctx)
 
   PetscFunctionBeginUser;
   ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
-  ierr = DMDAGetInfo(da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);
+  ierr = DMDAGetInfo(da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
 
   double const hinv = (double) Mx;
   double const h2inv = hinv * hinv;
@@ -52,86 +52,86 @@ PetscErrorCode KSEvaluate(SNES snes, Vec X, Vec F, void *ctx)
     for (i=xs; i<xs+xm; i++) {
 
       double const lap =
-        + x[j+0][i-3][0] * (   0.011111111111)
-        + x[j+0][i-2][0] * (  -0.150000000000)
-        + x[j+0][i-1][0] * (   1.500000000000)
-        + x[j-3][i+0][0] * (   0.011111111111)
-        + x[j-2][i+0][0] * (  -0.150000000000)
-        + x[j-1][i+0][0] * (   1.500000000000)
-        + x[j+0][i+0][0] * (  -5.444444444444)
-        + x[j+1][i+0][0] * (   1.500000000000)
-        + x[j+2][i+0][0] * (  -0.150000000000)
-        + x[j+3][i+0][0] * (   0.011111111111)
-        + x[j+0][i+1][0] * (   1.500000000000)
-        + x[j+0][i+2][0] * (  -0.150000000000)
-        + x[j+0][i+3][0] * (   0.011111111111);
+	+ x[j+0][i-3][0] * (1.0 / 90)
+	+ x[j+0][i-2][0] * (-3.0 / 20)
+	+ x[j+0][i-1][0] * (3.0 / 2)
+	+ x[j-3][i+0][0] * (1.0 / 90)
+	+ x[j-2][i+0][0] * (-3.0 / 20)
+	+ x[j-1][i+0][0] * (3.0 / 2)
+	+ x[j+0][i+0][0] * (-49.0 / 9)
+	+ x[j+1][i+0][0] * (3.0 / 2)
+	+ x[j+2][i+0][0] * (-3.0 / 20)
+	+ x[j+3][i+0][0] * (1.0 / 90)
+	+ x[j+0][i+1][0] * (3.0 / 2)
+	+ x[j+0][i+2][0] * (-3.0 / 20)
+	+ x[j+0][i+3][0] * (1.0 / 90);
 
       double const hyplap =
-        + x[j-3][i-3][0] * (   0.000246913580)
-        + x[j-2][i-3][0] * (  -0.003333333333)
-        + x[j-1][i-3][0] * (   0.033333333333)
-        + x[j+0][i-3][0] * (  -0.227160493827)
-        + x[j+1][i-3][0] * (   0.033333333333)
-        + x[j+2][i-3][0] * (  -0.003333333333)
-        + x[j+3][i-3][0] * (   0.000246913580)
-        + x[j-3][i-2][0] * (  -0.003333333333)
-        + x[j-2][i-2][0] * (   0.045000000000)
-        + x[j-1][i-2][0] * (  -0.450000000000)
-        + x[j+0][i-2][0] * (   2.816666666667)
-        + x[j+1][i-2][0] * (  -0.450000000000)
-        + x[j+2][i-2][0] * (   0.045000000000)
-        + x[j+3][i-2][0] * (  -0.003333333333)
-        + x[j-3][i-1][0] * (   0.033333333333)
-        + x[j-2][i-1][0] * (  -0.450000000000)
-        + x[j-1][i-1][0] * (   4.500000000000)
-        + x[j+0][i-1][0] * ( -14.666666666667)
-        + x[j+1][i-1][0] * (   4.500000000000)
-        + x[j+2][i-1][0] * (  -0.450000000000)
-        + x[j+3][i-1][0] * (   0.033333333333)
-        + x[j-3][i+0][0] * (  -0.227160493827)
-        + x[j-2][i+0][0] * (   2.816666666667)
-        + x[j-1][i+0][0] * ( -14.666666666667)
-        + x[j+0][i+0][0] * (  33.487654320988)
-        + x[j+1][i+0][0] * ( -14.666666666667)
-        + x[j+2][i+0][0] * (   2.816666666667)
-        + x[j+3][i+0][0] * (  -0.227160493827)
-        + x[j-3][i+1][0] * (   0.033333333333)
-        + x[j-2][i+1][0] * (  -0.450000000000)
-        + x[j-1][i+1][0] * (   4.500000000000)
-        + x[j+0][i+1][0] * ( -14.666666666667)
-        + x[j+1][i+1][0] * (   4.500000000000)
-        + x[j+2][i+1][0] * (  -0.450000000000)
-        + x[j+3][i+1][0] * (   0.033333333333)
-        + x[j-3][i+2][0] * (  -0.003333333333)
-        + x[j-2][i+2][0] * (   0.045000000000)
-        + x[j-1][i+2][0] * (  -0.450000000000)
-        + x[j+0][i+2][0] * (   2.816666666667)
-        + x[j+1][i+2][0] * (  -0.450000000000)
-        + x[j+2][i+2][0] * (   0.045000000000)
-        + x[j+3][i+2][0] * (  -0.003333333333)
-        + x[j-3][i+3][0] * (   0.000246913580)
-        + x[j-2][i+3][0] * (  -0.003333333333)
-        + x[j-1][i+3][0] * (   0.033333333333)
-        + x[j+0][i+3][0] * (  -0.227160493827)
-        + x[j+1][i+3][0] * (   0.033333333333)
-        + x[j+2][i+3][0] * (  -0.003333333333)
-        + x[j+3][i+3][0] * (   0.000246913580);
+	+ x[j-3][i-3][0] * (1.0 / 4050)
+	+ x[j-2][i-3][0] * (-1.0 / 300)
+	+ x[j-1][i-3][0] * (1.0 / 30)
+	+ x[j+0][i-3][0] * (-92.0 / 405)
+	+ x[j+1][i-3][0] * (1.0 / 30)
+	+ x[j+2][i-3][0] * (-1.0 / 300)
+	+ x[j+3][i-3][0] * (1.0 / 4050)
+	+ x[j-3][i-2][0] * (-1.0 / 300)
+	+ x[j-2][i-2][0] * (9.0 / 200)
+	+ x[j-1][i-2][0] * (-9.0 / 20)
+	+ x[j+0][i-2][0] * (169.0 / 60)
+	+ x[j+1][i-2][0] * (-9.0 / 20)
+	+ x[j+2][i-2][0] * (9.0 / 200)
+	+ x[j+3][i-2][0] * (-1.0 / 300)
+	+ x[j-3][i-1][0] * (1.0 / 30)
+	+ x[j-2][i-1][0] * (-9.0 / 20)
+	+ x[j-1][i-1][0] * (9.0 / 2)
+	+ x[j+0][i-1][0] * (-44.0 / 3)
+	+ x[j+1][i-1][0] * (9.0 / 2)
+	+ x[j+2][i-1][0] * (-9.0 / 20)
+	+ x[j+3][i-1][0] * (1.0 / 30)
+	+ x[j-3][i+0][0] * (-92.0 / 405)
+	+ x[j-2][i+0][0] * (169.0 / 60)
+	+ x[j-1][i+0][0] * (-44.0 / 3)
+	+ x[j+0][i+0][0] * (5425.0 / 162)
+	+ x[j+1][i+0][0] * (-44.0 / 3)
+	+ x[j+2][i+0][0] * (169.0 / 60)
+	+ x[j+3][i+0][0] * (-92.0 / 405)
+	+ x[j-3][i+1][0] * (1.0 / 30)
+	+ x[j-2][i+1][0] * (-9.0 / 20)
+	+ x[j-1][i+1][0] * (9.0 / 2)
+	+ x[j+0][i+1][0] * (-44.0 / 3)
+	+ x[j+1][i+1][0] * (9.0 / 2)
+	+ x[j+2][i+1][0] * (-9.0 / 20)
+	+ x[j+3][i+1][0] * (1.0 / 30)
+	+ x[j-3][i+2][0] * (-1.0 / 300)
+	+ x[j-2][i+2][0] * (9.0 / 200)
+	+ x[j-1][i+2][0] * (-9.0 / 20)
+	+ x[j+0][i+2][0] * (169.0 / 60)
+	+ x[j+1][i+2][0] * (-9.0 / 20)
+	+ x[j+2][i+2][0] * (9.0 / 200)
+	+ x[j+3][i+2][0] * (-1.0 / 300)
+	+ x[j-3][i+3][0] * (1.0 / 4050)
+	+ x[j-2][i+3][0] * (-1.0 / 300)
+	+ x[j-1][i+3][0] * (1.0 / 30)
+	+ x[j+0][i+3][0] * (-92.0 / 405)
+	+ x[j+1][i+3][0] * (1.0 / 30)
+	+ x[j+2][i+3][0] * (-1.0 / 300)
+	+ x[j+3][i+3][0] * (1.0 / 4050);
 
       double const grad_x =
-        + x[j][i-3][0] * (  -0.016666666667)
-        + x[j][i-2][0] * (   0.150000000000)
-        + x[j][i-1][0] * (  -0.750000000000)
-        + x[j][i+1][0] * (   0.750000000000)
-        + x[j][i+2][0] * (  -0.150000000000)
-        + x[j][i+3][0] * (   0.016666666667);
+	+ x[j][i-3][0] * (-1.0 / 60)
+	+ x[j][i-2][0] * (3.0 / 20)
+	+ x[j][i-1][0] * (-3.0 / 4)
+	+ x[j][i+1][0] * (3.0 / 4)
+	+ x[j][i+2][0] * (-3.0 / 20)
+	+ x[j][i+3][0] * (1.0 / 60);
 
       double const grad_y =
-        + x[j-3][i][0] * (  -0.016666666667)
-        + x[j-2][i][0] * (   0.150000000000)
-        + x[j-1][i][0] * (  -0.750000000000)
-        + x[j+1][i][0] * (   0.750000000000)
-        + x[j+2][i][0] * (  -0.150000000000)
-        + x[j+3][i][0] * (   0.016666666667);
+	+ x[j-3][i][0] * (-1.0 / 60)
+	+ x[j-2][i][0] * (3.0 / 20)
+	+ x[j-1][i][0] * (-3.0 / 4)
+	+ x[j+1][i][0] * (3.0 / 4)
+	+ x[j+2][i][0] * (-3.0 / 20)
+	+ x[j+3][i][0] * (1.0 / 60);
 
       double const grad_sq = grad_x * grad_x + grad_y * grad_y;
 
@@ -163,8 +163,8 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
   PetscFunctionBeginUser;
   ierr = MatZeroEntries(J);CHKERRQ(ierr);
 
-  ierr = SNESGetDM(snes,&da);
-  ierr = DMDAGetInfo(da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0);
+  ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,0,&Mx,&My,0,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   //  assert(Mx == My);
 
   double const hinv = (double) Mx;
@@ -185,69 +185,69 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
   MatStencil row, cols[49];
   PetscReal  grad_sq[6], lap[13], hyplap[49];
 
-  lap[0] = h2inv * (   0.011111111111);
-  lap[1] = h2inv * (  -0.150000000000);
-  lap[2] = h2inv * (   1.500000000000);
-  lap[3] = h2inv * (   0.011111111111);
-  lap[4] = h2inv * (  -0.150000000000);
-  lap[5] = h2inv * (   1.500000000000);
-  lap[6] = h2inv * (  -5.444444444444);
-  lap[7] = h2inv * (   1.500000000000);
-  lap[8] = h2inv * (  -0.150000000000);
-  lap[9] = h2inv * (   0.011111111111);
-  lap[10] = h2inv * (   1.500000000000);
-  lap[11] = h2inv * (  -0.150000000000);
-  lap[12] = h2inv * (   0.011111111111);
+  lap[0] = h2inv * (1.0 / 90);
+  lap[1] = h2inv * (-3.0 / 20);
+  lap[2] = h2inv * (3.0 / 2);
+  lap[3] = h2inv * (1.0 / 90);
+  lap[4] = h2inv * (-3.0 / 20);
+  lap[5] = h2inv * (3.0 / 2);
+  lap[6] = h2inv * (-49.0 / 9);
+  lap[7] = h2inv * (3.0 / 2);
+  lap[8] = h2inv * (-3.0 / 20);
+  lap[9] = h2inv * (1.0 / 90);
+  lap[10] = h2inv * (3.0 / 2);
+  lap[11] = h2inv * (-3.0 / 20);
+  lap[12] = h2inv * (1.0 / 90);
 
-  hyplap[0] = h4inv * (   0.000246913580);
-  hyplap[1] = h4inv * (  -0.003333333333);
-  hyplap[2] = h4inv * (   0.033333333333);
-  hyplap[3] = h4inv * (  -0.227160493827);
-  hyplap[4] = h4inv * (   0.033333333333);
-  hyplap[5] = h4inv * (  -0.003333333333);
-  hyplap[6] = h4inv * (   0.000246913580);
-  hyplap[7] = h4inv * (  -0.003333333333);
-  hyplap[8] = h4inv * (   0.045000000000);
-  hyplap[9] = h4inv * (  -0.450000000000);
-  hyplap[10] = h4inv * (   2.816666666667);
-  hyplap[11] = h4inv * (  -0.450000000000);
-  hyplap[12] = h4inv * (   0.045000000000);
-  hyplap[13] = h4inv * (  -0.003333333333);
-  hyplap[14] = h4inv * (   0.033333333333);
-  hyplap[15] = h4inv * (  -0.450000000000);
-  hyplap[16] = h4inv * (   4.500000000000);
-  hyplap[17] = h4inv * ( -14.666666666667);
-  hyplap[18] = h4inv * (   4.500000000000);
-  hyplap[19] = h4inv * (  -0.450000000000);
-  hyplap[20] = h4inv * (   0.033333333333);
-  hyplap[21] = h4inv * (  -0.227160493827);
-  hyplap[22] = h4inv * (   2.816666666667);
-  hyplap[23] = h4inv * ( -14.666666666667);
-  hyplap[24] = h4inv * (  33.487654320988);
-  hyplap[25] = h4inv * ( -14.666666666667);
-  hyplap[26] = h4inv * (   2.816666666667);
-  hyplap[27] = h4inv * (  -0.227160493827);
-  hyplap[28] = h4inv * (   0.033333333333);
-  hyplap[29] = h4inv * (  -0.450000000000);
-  hyplap[30] = h4inv * (   4.500000000000);
-  hyplap[31] = h4inv * ( -14.666666666667);
-  hyplap[32] = h4inv * (   4.500000000000);
-  hyplap[33] = h4inv * (  -0.450000000000);
-  hyplap[34] = h4inv * (   0.033333333333);
-  hyplap[35] = h4inv * (  -0.003333333333);
-  hyplap[36] = h4inv * (   0.045000000000);
-  hyplap[37] = h4inv * (  -0.450000000000);
-  hyplap[38] = h4inv * (   2.816666666667);
-  hyplap[39] = h4inv * (  -0.450000000000);
-  hyplap[40] = h4inv * (   0.045000000000);
-  hyplap[41] = h4inv * (  -0.003333333333);
-  hyplap[42] = h4inv * (   0.000246913580);
-  hyplap[43] = h4inv * (  -0.003333333333);
-  hyplap[44] = h4inv * (   0.033333333333);
-  hyplap[45] = h4inv * (  -0.227160493827);
-  hyplap[46] = h4inv * (   0.033333333333);
-  hyplap[47] = h4inv * (  -0.003333333333);
-  hyplap[48] = h4inv * (   0.000246913580);
+  hyplap[0] = h4inv * (1.0 / 4050);
+  hyplap[1] = h4inv * (-1.0 / 300);
+  hyplap[2] = h4inv * (1.0 / 30);
+  hyplap[3] = h4inv * (-92.0 / 405);
+  hyplap[4] = h4inv * (1.0 / 30);
+  hyplap[5] = h4inv * (-1.0 / 300);
+  hyplap[6] = h4inv * (1.0 / 4050);
+  hyplap[7] = h4inv * (-1.0 / 300);
+  hyplap[8] = h4inv * (9.0 / 200);
+  hyplap[9] = h4inv * (-9.0 / 20);
+  hyplap[10] = h4inv * (169.0 / 60);
+  hyplap[11] = h4inv * (-9.0 / 20);
+  hyplap[12] = h4inv * (9.0 / 200);
+  hyplap[13] = h4inv * (-1.0 / 300);
+  hyplap[14] = h4inv * (1.0 / 30);
+  hyplap[15] = h4inv * (-9.0 / 20);
+  hyplap[16] = h4inv * (9.0 / 2);
+  hyplap[17] = h4inv * (-44.0 / 3);
+  hyplap[18] = h4inv * (9.0 / 2);
+  hyplap[19] = h4inv * (-9.0 / 20);
+  hyplap[20] = h4inv * (1.0 / 30);
+  hyplap[21] = h4inv * (-92.0 / 405);
+  hyplap[22] = h4inv * (169.0 / 60);
+  hyplap[23] = h4inv * (-44.0 / 3);
+  hyplap[24] = h4inv * (5425.0 / 162);
+  hyplap[25] = h4inv * (-44.0 / 3);
+  hyplap[26] = h4inv * (169.0 / 60);
+  hyplap[27] = h4inv * (-92.0 / 405);
+  hyplap[28] = h4inv * (1.0 / 30);
+  hyplap[29] = h4inv * (-9.0 / 20);
+  hyplap[30] = h4inv * (9.0 / 2);
+  hyplap[31] = h4inv * (-44.0 / 3);
+  hyplap[32] = h4inv * (9.0 / 2);
+  hyplap[33] = h4inv * (-9.0 / 20);
+  hyplap[34] = h4inv * (1.0 / 30);
+  hyplap[35] = h4inv * (-1.0 / 300);
+  hyplap[36] = h4inv * (9.0 / 200);
+  hyplap[37] = h4inv * (-9.0 / 20);
+  hyplap[38] = h4inv * (169.0 / 60);
+  hyplap[39] = h4inv * (-9.0 / 20);
+  hyplap[40] = h4inv * (9.0 / 200);
+  hyplap[41] = h4inv * (-1.0 / 300);
+  hyplap[42] = h4inv * (1.0 / 4050);
+  hyplap[43] = h4inv * (-1.0 / 300);
+  hyplap[44] = h4inv * (1.0 / 30);
+  hyplap[45] = h4inv * (-92.0 / 405);
+  hyplap[46] = h4inv * (1.0 / 30);
+  hyplap[47] = h4inv * (-1.0 / 300);
+  hyplap[48] = h4inv * (1.0 / 4050);
 
   for (j=ys; j<ys+ym; j++) {
     for (i=xs; i<xs+xm; i++) {
@@ -268,7 +268,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
       cols[11].i = i+2; cols[11].j = j+0;
       cols[12].i = i+3; cols[12].j = j+0;
 
-      MatSetValuesStencil(J, 1, &row, 13, cols, lap, ADD_VALUES);
+      ierr = MatSetValuesStencil(J, 1, &row, 13, cols, lap, ADD_VALUES);CHKERRQ(ierr);
 
       /* hyperlaplacian */
       cols[0].i = i-3; cols[0].j = j-3;
@@ -321,7 +321,7 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
       cols[47].i = i+3; cols[47].j = j+2;
       cols[48].i = i+3; cols[48].j = j+3;
 
-      MatSetValuesStencil(J, 1, &row, 49, cols, hyplap, ADD_VALUES);
+      ierr = MatSetValuesStencil(J, 1, &row, 49, cols, hyplap, ADD_VALUES);CHKERRQ(ierr);
 
       /* grad_x^2 */
       cols[0].i = i-3; cols[0].j = j;
@@ -332,23 +332,23 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
       cols[5].i = i+3; cols[5].j = j;
 
       double const grad_x =
-        + x[j][i-3][0] * (  -0.016666666667)
-        + x[j][i-2][0] * (   0.150000000000)
-        + x[j][i-1][0] * (  -0.750000000000)
-        + x[j][i+1][0] * (   0.750000000000)
-        + x[j][i+2][0] * (  -0.150000000000)
-        + x[j][i+3][0] * (   0.016666666667);
+	+ x[j-3][i][0] * (-1.0 / 60)
+	+ x[j-2][i][0] * (3.0 / 20)
+	+ x[j-1][i][0] * (-3.0 / 4)
+	+ x[j+1][i][0] * (3.0 / 4)
+	+ x[j+2][i][0] * (-3.0 / 20)
+	+ x[j+3][i][0] * (1.0 / 60);
 
       double const a = h2inv * grad_x;
 
-      grad_sq[0] = a * (  -0.016666666667);
-      grad_sq[1] = a * (   0.150000000000);
-      grad_sq[2] = a * (  -0.750000000000);
-      grad_sq[3] = a * (   0.750000000000);
-      grad_sq[4] = a * (  -0.150000000000);
-      grad_sq[5] = a * (   0.016666666667);
+      grad_sq[0] = a * (-1.0 / 60);
+      grad_sq[1] = a * (3.0 / 20);
+      grad_sq[2] = a * (-3.0 / 4);
+      grad_sq[3] = a * (3.0 / 4);
+      grad_sq[4] = a * (-3.0 / 20);
+      grad_sq[5] = a * (1.0 / 60);
 
-      MatSetValuesStencil(J, 1, &row, 6, cols, grad_sq, ADD_VALUES);
+      ierr = MatSetValuesStencil(J, 1, &row, 6, cols, grad_sq, ADD_VALUES);CHKERRQ(ierr);
 
       /* grad_y^2 */
       cols[0].i = i; cols[0].j = j-3;
@@ -359,33 +359,33 @@ PetscErrorCode KSJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
       cols[5].i = i; cols[5].j = j+3;
 
       double const grad_y =
-        + x[j-3][i][0] * (  -0.016666666667)
-        + x[j-2][i][0] * (   0.150000000000)
-        + x[j-1][i][0] * (  -0.750000000000)
-        + x[j+1][i][0] * (   0.750000000000)
-        + x[j+2][i][0] * (  -0.150000000000)
-        + x[j+3][i][0] * (   0.016666666667);
+	+ x[j-3][i][0] * (-1.0 / 60)
+	+ x[j-2][i][0] * (3.0 / 20)
+	+ x[j-1][i][0] * (-3.0 / 4)
+	+ x[j+1][i][0] * (3.0 / 4)
+	+ x[j+2][i][0] * (-3.0 / 20)
+	+ x[j+3][i][0] * (1.0 / 60);
 
       double const b = h2inv * grad_y;
 
-      grad_sq[0] = b * (  -0.016666666667);
-      grad_sq[1] = b * (   0.150000000000);
-      grad_sq[2] = b * (  -0.750000000000);
-      grad_sq[3] = b * (   0.750000000000);
-      grad_sq[4] = b * (  -0.150000000000);
-      grad_sq[5] = b * (   0.016666666667);
+      grad_sq[0] = b * (-1.0 / 60);
+      grad_sq[1] = b * (3.0 / 20);
+      grad_sq[2] = b * (-3.0 / 4);
+      grad_sq[3] = b * (3.0 / 4);
+      grad_sq[4] = b * (-3.0 / 20);
+      grad_sq[5] = b * (1.0 / 60);
 
-      MatSetValuesStencil(J, 1, &row, 6, cols, grad_sq, ADD_VALUES);
+      ierr = MatSetValuesStencil(J, 1, &row, 6, cols, grad_sq, ADD_VALUES);CHKERRQ(ierr);
 
     }
   }
 
   /* assemble and restore */
-  MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);
+  ierr = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  DMDAVecRestoreArrayDOF(da,lX,&x);
-  DMRestoreLocalVector(da,&lX);
+  ierr = DMDAVecRestoreArrayDOF(da,lX,&x);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&lX);CHKERRQ(ierr);
 
   if (J != B) {
     MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);
@@ -412,7 +412,7 @@ PetscErrorCode KSBEEvaluate(SNES snes, Vec X, Vec F, void *ctx)
 
   PetscFunctionBeginUser;
   ierr = KSEvaluate(snes, X, F, ctx);CHKERRQ(ierr);
-  VecAXPBY(F,1.0,ks->dt,X);
+  VecAXPBY(F,1.0,-ks->dt,X);
   PetscFunctionReturn(0);
 }
 
@@ -428,7 +428,7 @@ PetscErrorCode KSBEJacobian(SNES snes, Vec X, Mat J, Mat B, void* ctx)
 
   PetscFunctionBeginUser;
   ierr = KSJacobian(snes, X, J, B, ctx);CHKERRQ(ierr);
-  MatScale(J, ks->dt);
+  MatScale(J, -ks->dt);
   MatShift(J, 1.0);
   /* if (B) { */
   /*   MatScale(B, -ctx->dt); */
@@ -478,8 +478,8 @@ PetscErrorCode KSCreate(MPI_Comm comm, KSCtx* ctx)
                       -128, -128, PETSC_DECIDE, PETSC_DECIDE,
                       1, 3, NULL, NULL, &ctx->da); CHKERRQ(ierr);
 
-  DMCreateGlobalVector(ctx->da, &ctx->r);
-  DMCreateMatrix(ctx->da, &ctx->J);
+  ierr = DMCreateGlobalVector(ctx->da, &ctx->r);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(ctx->da, &ctx->J);CHKERRQ(ierr);
 
   /* create non-linear solver */
   ierr = SNESCreate(comm, &ctx->snes); CHKERRQ(ierr);
@@ -511,12 +511,12 @@ PetscErrorCode KSInitial(Vec U, KSCtx* ks)
   ierr = DMDAVecGetArrayDOF(ks->da,U,&u);CHKERRQ(ierr);
   ierr = DMDAGetCorners(ks->da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
 
-  double const h = 1.0 / (double)(Mx);
+  double const h = 1.0 / Mx;
   for (j=ys; j<ys+ym; j++) {
     double const y = 2 * M_PI * h * j;
     for (i=xs; i<xs+xm; i++) {
       double const x = 2 * M_PI * h * i;
-      u[j][i][0] = (cos(x) + cos(8*x));// * (cos(y) + cos(16*y));
+      u[j][i][0] = (cos(x) + cos(3*x));// * (cos(y) + cos(5*y)) / 4.0;
     }
   }
 
@@ -539,17 +539,17 @@ PetscErrorCode KSTestEvaluate(KSCtx *ctx)
   PetscErrorCode ierr;
   PetscScalar    ***u, ***f;
   PetscInt Mx, xs, ys, xm, ym;
-  Vec U, F, F2;
+  Vec U, F1, F2;
 
   ierr = VecDuplicate(ctx->r, &U);
-  ierr = VecDuplicate(ctx->r, &F);
+  ierr = VecDuplicate(ctx->r, &F1);
   ierr = VecDuplicate(ctx->r, &F2);
 
   /* create test state and exact evaluation */
   ierr = DMDAGetInfo(ctx->da,0,&Mx,0,0,0,0,0,0,0,0,0,0,0);
   ierr = DMDAGetCorners(ctx->da,&xs,&ys,NULL,&xm,&ym,NULL);
   ierr = DMDAVecGetArrayDOF(ctx->da,U,&u);
-  ierr = DMDAVecGetArrayDOF(ctx->da,F,&f);
+  ierr = DMDAVecGetArrayDOF(ctx->da,F1,&f);
 
   ctx->dt = 1.e-4;
 
@@ -567,37 +567,44 @@ PetscErrorCode KSTestEvaluate(KSCtx *ctx)
       double const sinx = sin(2*pi*x);
       double const siny = sin(4*pi*y);
 
-      u[j][i][0] = 1.0;
-      f[j][i][0] = 0.0;
+      /* u[j][i][0] = 1.0; */
+      /* f[j][i][0] = 0.0; */
 
       /* u[j][i][0] = cosx; */
-      /* f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx ) - 4*pi2*cosx + 16*pi4*cosx; */
+      /* f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx )- 4*pi2*cosx + 16*pi4*cosx; */
 
-      /* u[j][i][0] = cosx * cosy; */
-      /* f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx*cosy*cosy + 16*pi2*cosx*cosx*siny*siny ) */
-      /* 	- 4*pi2*cosx*cosy - 16*pi2*cosx*cosy */
-      /* 	+ 2*(64*pi4*cosx*cosy) */
-      /* 	+ 16*pi4*cosx*cosy + 256*pi4*cosx*cosy; */
+      u[j][i][0] = cosx * cosy;
+      f[j][i][0] = 0.5 * ( 4*pi2*sinx*sinx*cosy*cosy + 16*pi2*cosx*cosx*siny*siny )
+      	- 4*pi2*cosx*cosy - 16*pi2*cosx*cosy
+      	+ 2*(64*pi4*cosx*cosy)
+      	+ 16*pi4*cosx*cosy + 256*pi4*cosx*cosy;
     }
   }
 
   ierr = DMDAVecRestoreArrayDOF(ctx->da,U,&u);
-  ierr = DMDAVecRestoreArrayDOF(ctx->da,F,&f);
+  ierr = DMDAVecRestoreArrayDOF(ctx->da,F1,&f);
 
   PetscReal norm1, norm2;
-  VecNorm(F, NORM_INFINITY, &norm1);
+  VecNorm(F1, NORM_INFINITY, &norm1);
   PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F1|    = %g\n", norm1);
 
   KSEvaluate(ctx->snes, U, F2, ctx);
   VecNorm(F2, NORM_INFINITY, &norm2);
   PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F2|    = %g\n", norm2);
 
-  VecAXPY(F, -1.0, F2);
-  VecNorm(F, NORM_INFINITY, &norm2);
+  VecAXPY(F1, -1.0, F2);
+  VecNorm(F1, NORM_INFINITY, &norm2);
   PetscPrintf(PETSC_COMM_WORLD, "Test norm: max|F1-F2| = %g\n", norm2);///norm1);
 
+  PetscViewer viewer;
+  PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,NULL,0,0,300,300,&viewer);
+  PetscViewerPushFormat(viewer,PETSC_VIEWER_DRAW_LG);
+  VecView(F1,viewer);
+
+  PetscSleep(10);
+
   VecDestroy(&F2);
-  VecDestroy(&F);
+  VecDestroy(&F1);
   VecDestroy(&U);
 
   return 0;
