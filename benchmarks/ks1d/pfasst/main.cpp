@@ -1,6 +1,8 @@
 
 #include <complex>
 
+#include <cstdio>
+
 #include <pfasst/pfasst.hpp>
 #include <pfasst/mpi_communicator.hpp>
 #include <pfasst/encap/imex_sweeper.hpp>
@@ -30,6 +32,15 @@ public:
     this->ks.initial((double*) v.data());
   }
 
+  void sweep() override
+  {
+    pfasst::encap::IMEXSweeper<double>::sweep();
+    auto step = this->get_controller()->get_step();
+    auto iter = this->get_controller()->get_iteration();
+    char fname[128]; snprintf(fname, 128, "s%04dk%02d.dat", int(step), int(iter));
+    this->dump(this->get_end_state(), fname);
+  }
+
   void dump(encap y, string fname)
   {
     auto& v = as_vector<complex<double>,double>(y);
@@ -38,19 +49,25 @@ public:
 
   void f_expl_eval(encap f_expl_encap, encap u_encap, double t) override
   {
-
+    auto& u = as_vector<complex<double>,double>(u_encap);
+    auto& f = as_vector<complex<double>,double>(f_expl_encap);
+    this->ks.expl_eval((double*) u.data(), (double*) f.data());
   }
 
-  void f_impl_eval(encap f_expl_encap, encap u_encap, double t) override
+  void f_impl_eval(encap f_impl_encap, encap u_encap, double t) override
   {
-
+    auto& u = as_vector<complex<double>,double>(u_encap);
+    auto& f = as_vector<complex<double>,double>(f_impl_encap);
+    this->ks.impl_eval((double*) u.data(), (double*) f.data());
   }
 
   void impl_solve(encap f_encap, encap u_encap, double t, double dt, encap rhs_encap) override
   {
-
+    auto& u = as_vector<complex<double>,double>(u_encap);
+    auto& f = as_vector<complex<double>,double>(f_encap);
+    auto& rhs = as_vector<complex<double>,double>(rhs_encap);
+    this->ks.impl_solve((double*) u.data(), (double*) f.data(), dt, (double*) rhs.data());
   }
-
 };
 
 class SpectralTransfer1D : public PolyInterpMixin<double>
@@ -60,28 +77,40 @@ class SpectralTransfer1D : public PolyInterpMixin<double>
 
   void interpolate(encap dst, const_encap src) override
   {
+    auto& fine = as_vector<complex<double>,double>(dst);
+    auto& crse = as_vector<complex<double>,double>(src);
+    if (fine.size() == crse.size()) {
+      dst->copy(src);
+      return;
+    }
   }
 
   void restrict(encap dst, const_encap src) override
   {
+    auto& fine = as_vector<complex<double>,double>(src);
+    auto& crse = as_vector<complex<double>,double>(dst);
+    if (fine.size() == crse.size()) {
+      dst->copy(src);
+      return;
+    }
   }
 };
 
 
 int main(int argc, char** argv)
 {
-  int    nsteps = 4;
-  double dt     = 0.01;
+  int    nsteps = 1000;
+  double dt     = 0.1;
   int    niters = 4;
 
   MPI_Init(&argc, &argv);
 
-  vector<pair<size_t, pfasst::quadrature::QuadratureType>> nodes = {
-    { 3, pfasst::quadrature::QuadratureType::GaussLobatto },
-    { 5, pfasst::quadrature::QuadratureType::GaussLobatto }
+  vector<pair<size_t, pfasst::QuadratureType>> nodes = {
+    { 3, pfasst::QuadratureType::GaussLobatto },
+    { 5, pfasst::QuadratureType::GaussLobatto }
   };
 
-  vector<unsigned int> nx = { 64, 128 };
+  vector<unsigned int> nx = { 512, 512 };
 
   auto build_level = [nx](size_t level) {
     auto factory  = make_shared<MPIVectorFactory<complex<double>>>(nx[level]);

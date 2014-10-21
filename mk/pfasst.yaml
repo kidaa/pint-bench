@@ -1,0 +1,17 @@
+extends: [cmake_package]
+
+defaults:
+  relocatable: true
+
+sources:
+- key: zip:zsgu45dwutfbh4uqihlto2mowzss7742
+  url: https://github.com/memmett/PFASST/archive/feature/add-install-target.zip
+# - key: tar.gz:yh6skp5d62pulidb2y4qukvooho2i7v4
+#   url: https://github.com/Parallel-in-Time/PFASST/archive/v0.2.0.tar.gz
+
+dependencies:
+  build: [eigen]
+
+build_stages:
+- name: configure
+  extra: ['-Dpfasst_BUILD_EXAMPLES=OFF', '-Dpfasst_BUILD_TESTS=OFF', '-Dpfasst_WITH_MPI=ON']

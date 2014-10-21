@@ -1,0 +1,23 @@
+extends:
+- name: hashstack
+  urls: ['https://github.com/hashdist/hashstack.git']
+  key: 'git:445e198b35facf04521fe3d48747a0eec05ca91c'
+  file: debian.yaml
+
+parameters:
+  debug: false
+
+packages:
+  mpi:
+    use: host-mpi
+  fftw:
+  eigen:
+  pfasst:
+
+package_dirs:
+- pkgs
+- base
+- mk
+
+hook_import_dirs:
+- base
