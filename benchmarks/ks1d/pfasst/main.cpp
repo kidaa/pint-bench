@@ -79,20 +79,24 @@ class SpectralTransfer1D : public PolyInterpMixin<double>
   {
     auto& fine = as_vector<complex<double>,double>(dst);
     auto& crse = as_vector<complex<double>,double>(src);
-    if (fine.size() == crse.size()) {
-      dst->copy(src);
-      return;
-    }
+
+    unsigned int fi=0, ci=0, nf=fine.size(), nc=crse.size();
+
+    for (    ; ci < nc/2;      ) fine[fi++] = crse[ci++];
+    for (    ; fi < nf-nc/2+1; ) fine[fi++] = 0.0;
+    for (ci++; fi < nf;        ) fine[fi++] = crse[ci++];
   }
 
   void restrict(encap dst, const_encap src) override
   {
     auto& fine = as_vector<complex<double>,double>(src);
     auto& crse = as_vector<complex<double>,double>(dst);
-    if (fine.size() == crse.size()) {
-      dst->copy(src);
-      return;
-    }
+
+    unsigned int fi=0, ci=0, nf=fine.size(), nc=crse.size();
+
+    for (    ; ci < nc/2;    ) crse[ci++] = fine[fi++];
+    crse[ci++] = 0.0; fi += 1 + nc;
+    for (    ; ci < nc;      ) crse[ci++] = fine[fi++];
   }
 };
 
@@ -110,7 +114,7 @@ int main(int argc, char** argv)
     { 5, pfasst::QuadratureType::GaussLobatto }
   };
 
-  vector<unsigned int> nx = { 512, 512 };
+  vector<unsigned int> nx = { 256, 512 };
 
   auto build_level = [nx](size_t level) {
     auto factory  = make_shared<MPIVectorFactory<complex<double>>>(nx[level]);
