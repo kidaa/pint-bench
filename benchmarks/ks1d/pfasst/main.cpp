@@ -109,7 +109,7 @@ int main(int argc, char** argv)
 
   MPI_Init(&argc, &argv);
 
-  vector<pair<size_t, pfasst::QuadratureType>> nodes = {
+  vector< pair<size_t, pfasst::QuadratureType> > nodes = {
     { 3, pfasst::QuadratureType::GaussLobatto },
     { 5, pfasst::QuadratureType::GaussLobatto }
   };
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
   auto initial = [](shared_ptr<EncapSweeper<>> sweeper, shared_ptr<Encapsulation<>> q0) {
     auto swp = dynamic_pointer_cast<KS1DSweeper>(sweeper);
     swp->initial(q0);
-    swp->dump(q0, "initial.dat");
+//    swp->dump(q0, "initial.dat");
   };
 
   MPICommunicator comm(MPI_COMM_WORLD);
@@ -140,6 +140,11 @@ int main(int argc, char** argv)
   pf.set_duration(0.0, nsteps * dt, dt, niters);
   pf.set_nsweeps({2, 1});
   pf.run();
+
+  if (comm.rank() == comm.size()-1) {
+    auto sweeper = pf.get_finest<KS1DSweeper>();
+    sweeper->dump(sweeper->get_end_state(), "pf.dat");
+  }
 
   //  fftw_cleanup();
   MPI_Finalize();

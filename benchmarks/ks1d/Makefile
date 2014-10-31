@@ -2,7 +2,7 @@
 PB = $(abspath ../..)
 
 BENCHMARK = ks1d
-DRIVERS   = pfasst
+DRIVERS   = pfasst ark4
 
 include $(PB)/mk/Makefile
 
@@ -18,4 +18,7 @@ vpath %.cpp ks1d
 OBJ = $(addprefix build/, $(addsuffix .o,$(basename $(CXXSRC))))
 
 ks1d-pfasst: pfasst/main.cpp $(OBJ)
+	$(CXX) -std=c++11 -o $@ $(CXXFLAGS) $^ -lfftw3_omp -lfftw3
+
+ks1d-ark4: ark4/main.cpp $(OBJ)
 	$(CXX) -std=c++11 -o $@ $(CXXFLAGS) $^ -lfftw3_omp -lfftw3
