@@ -1,0 +1,22 @@
+extends: [base_package]
+
+defaults:
+  relocatable: true
+
+sources:
+- key: tar.gz:skf5mav5hcu75bjh3j7z7f3c62rlelk5
+  url: file:/home/memmett/projects/pint-bench/extern/braid-2014.09.16.tar.gz
+
+build_stages:
+- name: build
+  handler: bash
+  bash: |
+    make libbraid.a
+
+- name: install
+  handler: bash
+  bash: |
+    mkdir ${ARTIFACT}/include
+    mkdir ${ARTIFACT}/lib
+    cp braid.h braid_status.h braid_defs.h ${ARTIFACT}/include
+    cp libbraid.a ${ARTIFACT}/lib

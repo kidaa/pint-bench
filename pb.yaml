@@ -13,6 +13,7 @@ packages:
   fftw:
   eigen:
   pfasst:
+  xbraid:
 
 package_dirs:
 - pkgs

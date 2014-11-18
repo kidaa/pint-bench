@@ -7,8 +7,8 @@ class KS1DPrivate;
 class KS1D
 {
   KS1DPrivate* d;
-  unsigned int nx;
 public:
+  unsigned int nx;
   KS1D(unsigned int nx);
   ~KS1D();
   void initial(double *y);
